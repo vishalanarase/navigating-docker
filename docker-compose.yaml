@@ -1,0 +1,32 @@
+version: "3.8"
+
+services:
+  # Golang Application Service
+  api:
+    build: .
+    ports:
+      - "8081:8081"    # Map port 8080 from container to the host machine
+    environment:
+      - DB_HOST=db     # Environment variable pointing to the database service
+      - DB_PORT=3306   # MySQL port
+      - DB_USER=api
+      - DB_PASSWORD=api_pass
+      - DB_NAME=api_db
+    depends_on:
+      - db             # This ensures the db service starts before the api
+
+  # MySQL Database Service
+  db:
+    image: mysql:8.0
+    environment:
+      - MYSQL_ROOT_PASSWORD=password
+      - MYSQL_USER=api
+      - MYSQL_PASSWORD=api_pass
+      - MYSQL_DATABASE=api_db
+    ports:
+      - "3306:3306"  # Expose MySQL port to host (optional, for testing)
+    volumes:
+      - mysql_data:/var/lib/mysql  # Persistent data storage for MySQL
+
+volumes:
+  mysql_data:   # Named volume for persistent MySQL data storage
