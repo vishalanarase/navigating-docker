@@ -3,17 +3,30 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"net/http"
+	"os"
 
 	_ "github.com/go-sql-driver/mysql"
 )
 
 func dbConnection() (*sql.DB, error) {
-	// Connect to MySQL database
-	dsn := "root:my-secret-pw@tcp(mysql-container:3306)/my_database"
-	db, err := sql.Open("mysql", dsn)
+	// MySQL connection string
+	connStr := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s",
+		os.Getenv("DB_USER"), os.Getenv("DB_PASSWORD"), os.Getenv("DB_HOST"),
+		os.Getenv("DB_PORT"), os.Getenv("DB_NAME"))
+
+	// Open MySQL database connection
+	db, err := sql.Open("mysql", connStr)
 	if err != nil {
-		return nil, err
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	// Test the database connection
+	err = db.Ping()
+	if err != nil {
+		log.Fatal(err)
 	}
 	return db, nil
 }
@@ -27,28 +40,10 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	}
 	defer db.Close()
 
-	// Query the database for a list of users
-	rows, err := db.Query("SELECT id, name FROM users")
+	_, err = w.Write([]byte("Hello, Golang API is connected to MySQL!"))
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Error fetching data from the database: %v", err), http.StatusInternalServerError)
-		return
+		log.Fatal(err)
 	}
-	defer rows.Close()
-
-	// Display the results
-	var users []string
-	for rows.Next() {
-		var id int
-		var name string
-		if err := rows.Scan(&id, &name); err != nil {
-			http.Error(w, fmt.Sprintf("Error reading rows: %v", err), http.StatusInternalServerError)
-			return
-		}
-		users = append(users, fmt.Sprintf("%d: %s", id, name))
-	}
-
-	// Respond with the list of users
-	fmt.Fprintf(w, "Users: \n%s", users)
 }
 
 func main() {
